@@ -1,10 +1,11 @@
 {
-  "name": "Game Người Que",
-  "short_name": "NguoiQue",
+  "name": "Pixel RPG Dungeon",
+  "short_name": "PixelRPG",
+  "description": "Game thế giới pixel đánh quái, dungeon và boss",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0ea5e9",
-  "theme_color": "#0ea5e9",
+  "background_color": "#000000",
+  "theme_color": "#111827",
   "orientation": "portrait",
   "icons": [
     {
