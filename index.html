@@ -2,143 +2,166 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Game Map Dài</title>
-<style>
-body { margin:0; background:#000; touch-action:none; }
-canvas { display:block; margin:auto; background:#7dd3fc; }
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel World RPG</title>
 
-button{
+<style>
+body{
+  margin:0;
+  background:#000;
+  overflow:hidden;
+}
+canvas{
+  display:block;
+  margin:auto;
+  background:#8fd3ff;
+}
+#ui{
+  position:fixed;
+  top:10px;
+  left:10px;
+  color:white;
+  background:rgba(0,0,0,0.6);
+  padding:8px;
+  border-radius:8px;
+  font-size:14px;
+}
+.controls{
   position:fixed;
   bottom:20px;
-  width:70px;
-  height:70px;
-  border-radius:50%;
-  font-size:20px;
-  opacity:0.7;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:20px;
 }
-#left{ left:20px }
-#right{ left:100px }
-#attack{ right:20px; background:red; color:white }
+.btn{
+  width:60px;
+  height:60px;
+  border-radius:12px;
+  border:none;
+  font-size:24px;
+}
 </style>
 </head>
+
 <body>
 
-<canvas id="game" width="360" height="200"></canvas>
+<div id="ui">
+LV: 1<br>
+HP: 100<br>
+Gold: 0
+</div>
 
-<button id="left">◀</button>
-<button id="right">▶</button>
-<button id="attack">⚔</button>
+<canvas id="game" width="360" height="640"></canvas>
+
+<div class="controls">
+  <button class="btn"
+    ontouchstart="left=true"
+    ontouchend="left=false">←</button>
+
+  <button class="btn" onclick="attack()">⚔</button>
+
+  <button class="btn"
+    ontouchstart="right=true"
+    ontouchend="right=false">→</button>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// ===== MAP =====
-const mapWidth = 2000; // MAP DÀI
-let cameraX = 0;
+// ===== LOAD IMAGES =====
+const playerImg = new Image();
+playerImg.src = "player_walk.png";
 
-// ===== ẢNH =====
-const runImg = new Image();
-runImg.src = "player_run.png";
-const attackImg = new Image();
-attackImg.src = "player_attack.png";
+const groundImg = new Image();
+groundImg.src = "ground.png";
 
 // ===== PLAYER =====
-const frameW = 40, frameH = 40;
-let player = {
-  x: 100,
-  y: 120,
+const player = {
+  x: 160,
+  y: 420,
+  w: 32,
+  h: 32,
   speed: 2,
   frame: 0,
-  state: "idle",
-  facing: 1
+  maxFrame: 4,
+  tick: 0,
+  moving: false
 };
 
-// ===== NÚT =====
-let left=false, right=false;
+// ===== CONTROL FLAGS =====
+let left = false;
+let right = false;
 
-document.getElementById("left").ontouchstart=()=>left=true;
-document.getElementById("left").ontouchend=()=>left=false;
-
-document.getElementById("right").ontouchstart=()=>right=true;
-document.getElementById("right").ontouchend=()=>right=false;
-
-document.getElementById("attack").ontouchstart=()=>{
-  player.state="attack";
-  player.frame=0;
-};
-
-// ===== UPDATE =====
-function update(){
-  if(player.state==="attack"){
-    player.frame+=0.15;
-    if(player.frame>=2){
-      player.state="idle";
-      player.frame=0;
-    }
-    return;
-  }
-
-  if(left){
-    player.x-=player.speed;
-    player.facing=-1;
-    player.state="run";
-  }
-  else if(right){
-    player.x+=player.speed;
-    player.facing=1;
-    player.state="run";
-  }
-  else{
-    player.state="idle";
-    player.frame=0;
-  }
-
-  if(player.state==="run"){
-    player.frame+=0.15;
-    if(player.frame>=4) player.frame=0;
-  }
-
-  // GIỚI HẠN MAP
-  player.x=Math.max(0,Math.min(player.x,mapWidth-frameW));
-
-  // CAMERA THEO PLAYER
-  cameraX = player.x - canvas.width/2;
-  cameraX = Math.max(0, Math.min(cameraX, mapWidth-canvas.width));
-}
-
-// ===== DRAW =====
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // NỀN MAP
-  ctx.fillStyle="#4ade80";
-  ctx.fillRect(-cameraX,160,mapWidth,40);
-
-  ctx.save();
-  ctx.scale(player.facing,1);
-
-  let img = player.state==="attack"?attackImg:runImg;
-  let fx = Math.floor(player.frame)*frameW;
+// ===== DRAW PLAYER =====
+function drawPlayer(){
+  if(!playerImg.complete) return;
 
   ctx.drawImage(
-    img,
-    fx,0,frameW,frameH,
-    player.facing===1 ? player.x-cameraX : -(player.x-cameraX)-frameW,
-    player.y,
-    frameW,frameH
+    playerImg,
+    player.frame * 32, 0,
+    32, 32,
+    player.x, player.y,
+    32, 32
   );
-
-  ctx.restore();
 }
 
-// ===== LOOP =====
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
+// ===== DRAW GROUND =====
+function drawGround(){
+  if(!groundImg.complete){
+    ctx.fillStyle = "#1f7a1f";
+    ctx.fillRect(0,480,canvas.width,160);
+    return;
+  }
+  for(let x=0; x<canvas.width; x+=32){
+    ctx.drawImage(groundImg, x, 480, 32, 32);
+  }
 }
-loop();
+
+// ===== ATTACK =====
+function attack(){
+  alert("Tấn công!");
+}
+
+// ===== GAME LOOP =====
+function gameLoop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // SKY
+  ctx.fillStyle = "#8fd3ff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // MOVE
+  player.moving = false;
+  if(left){
+    player.x -= player.speed;
+    player.moving = true;
+  }
+  if(right){
+    player.x += player.speed;
+    player.moving = true;
+  }
+
+  // ANIMATION
+  player.tick++;
+  if(player.tick > 10){
+    if(player.moving){
+      player.frame = (player.frame + 1) % player.maxFrame;
+    }else{
+      player.frame = 0;
+    }
+    player.tick = 0;
+  }
+
+  drawGround();
+  drawPlayer();
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
 </script>
+
 </body>
 </html>
