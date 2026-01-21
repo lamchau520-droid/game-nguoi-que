@@ -1,2 +1,2 @@
 # game-nguoi-que
-Game người que đánh quái
+Game người que đánh quáiv1
