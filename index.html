@@ -9,13 +9,11 @@
 html,body{
   margin:0;
   padding:0;
-  overflow:hidden;
   background:black;
 }
 canvas{
   display:block;
-  width:100vw;
-  height:100vh;
+  margin:auto;
   background:#8fd3ff;
 }
 </style>
@@ -28,24 +26,25 @@ canvas{
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// FULL MÀN HÌNH
-function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener("resize", resize);
+// KHUNG GAME CỐ ĐỊNH (DỄ NHÌN TRÊN ĐIỆN THOẠI)
+canvas.width = 360;
+canvas.height = 640;
 
 // LOAD ẢNH
 const playerImg = new Image();
-playerImg.src = "player_walk.png";
+playerImg.src = "./player_walk.png";
 
 const groundImg = new Image();
-groundImg.src = "ground.png";
+groundImg.src = "./ground.png";
+
+let loaded = 0;
+[playerImg, groundImg].forEach(img=>{
+  img.onload = ()=>loaded++;
+});
 
 // PLAYER
 const player = {
-  x: 100,
+  x: 80,
   y: 0,
   w: 32,
   h: 32,
@@ -53,11 +52,17 @@ const player = {
   tick: 0
 };
 
-// GAME LOOP
-function update(){
+function gameLoop(){
+  if(loaded < 2){
+    ctx.fillStyle="white";
+    ctx.fillText("Loading...",140,320);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // VẼ ĐẤT
+  // ĐẤT
   for(let x=0;x<canvas.width;x+=32){
     ctx.drawImage(groundImg,x,canvas.height-32,32,32);
   }
@@ -68,7 +73,7 @@ function update(){
     player.y = canvas.height-32-player.h;
   }
 
-  // ANIMATION ĐI BỘ
+  // ANIMATION
   player.tick++;
   if(player.tick > 8){
     player.frame = (player.frame+1)%4;
@@ -81,10 +86,10 @@ function update(){
     player.x,player.y,48,48
   );
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(gameLoop);
 }
 
-update();
+gameLoop();
 </script>
 </body>
 </html>
