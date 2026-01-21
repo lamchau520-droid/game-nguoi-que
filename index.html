@@ -2,230 +2,187 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pixel World RPG</title>
 <style>
-body{margin:0;background:black;overflow:hidden}
-canvas{display:block;margin:auto}
+body{margin:0;background:#000;overflow:hidden;}
+canvas{display:block;margin:auto;background:#8fd3ff;}
 #ui{
- position:fixed;top:10px;left:10px;
- background:rgba(0,0,0,.6);color:white;
- padding:8px;border-radius:8px;font-size:14px
+  position:fixed;top:10px;left:10px;
+  color:white;background:rgba(0,0,0,.6);
+  padding:8px;border-radius:8px;font-size:14px;
 }
 .controls{
- position:fixed;bottom:18px;width:100%;
- display:flex;justify-content:center;gap:14px
+  position:fixed;bottom:20px;width:100%;
+  display:flex;justify-content:center;gap:20px;
 }
-.btn{
- width:56px;height:56px;
- font-size:22px;border-radius:12px;border:none
-}
+.btn{width:60px;height:60px;font-size:24px;border-radius:12px;}
 </style>
 </head>
 
 <body>
 
 <div id="ui">
-HP: <span id="hp">100</span><br>
-Dungeon: <span id="dun">1</span><br>
-Map: <span id="map">Cỏ</span><br>
-Kiếm: <span id="sword">Gỗ</span><br>
-Giáp: <span id="armor">Vải</span>
+LV: 1<br>
+HP: 100<br>
+Gold: <span id="gold">0</span>
 </div>
 
 <canvas id="game" width="360" height="640"></canvas>
 
 <div class="controls">
-<button class="btn" onclick="move(-1)">←</button>
-<button class="btn" onclick="attack()">⚔</button>
-<button class="btn" onclick="cast()">🔥</button>
-<button class="btn" onclick="move(1)">→</button>
+  <button class="btn" onclick="moveLeft()">←</button>
+  <button class="btn" onclick="attack()">⚔</button>
+  <button class="btn" onclick="moveRight()">→</button>
 </div>
 
 <script>
-const c=document.getElementById("game");
-const x=c.getContext("2d");
-
-// ===== MAPS =====
-const maps=[
- {name:"Cỏ", sky:"#8fd3ff", ground:"#1f7a1f"},
- {name:"Sa mạc", sky:"#ffe29a", ground:"#d2b48c"},
- {name:"Băng", sky:"#dff3ff", ground:"#9ad0ec"}
-];
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+let gold = 0;
 
 // ===== PLAYER =====
-const p={
- x:160,y:420,w:32,h:32,
- hp:100,dir:1,spd:2,
- dmg:20,def:0,
- frame:0,tick:0,moving:false,
- sword:"Gỗ", armor:"Vải"
+const player = {x:160,y:420,w:32,h:32,speed:2,moving:false,frame:0,tick:0};
+
+// ===== PLAYER IMAGES =====
+const imgIdle = new Image(); imgIdle.src="player_idle.png";
+const imgRun1 = new Image(); imgRun1.src="player_run1.png";
+const imgRun2 = new Image(); imgRun2.src="player_run2.png";
+
+// ===== BOSS =====
+const bossImg = new Image(); bossImg.src="boss.png";
+const boss = {
+  x:200,y:380,w:40,h:40,
+  frame:0,attacking:false,
+  hp:30,alive:true,
+  dir:1,speed:0.5
 };
 
-let dungeon=1;
-let mapIndex=0;
-let enemies=[];
-let drops=[];
-let spells=[];
+// ===== COIN =====
+const coinImg = new Image(); coinImg.src="coin.png";
+const coins = [];
 
-// ===== IMAGES =====
-const idle=new Image(); idle.src="player_idle.png";
-const run1=new Image(); run1.src="player_run1.png";
-const run2=new Image(); run2.src="player_run2.png";
-
-// ===== SOUND =====
-const sAtk=new Audio("sounds/attack.mp3");
-const sHit=new Audio("sounds/hit.mp3");
-const sBoss=new Audio("sounds/boss.mp3");
-
-// ===== ENEMY =====
-function spawn(){
- enemies=[];
- let count=2+dungeon;
- for(let i=0;i<count;i++){
-  enemies.push({
-   x:40+i*70,y:440,
-   hp:40+10*dungeon
-  });
- }
- if(dungeon%3===0){
-  enemies.push({x:140,y:400,hp:200,boss:true});
-  sBoss.play();
- }
-}
-spawn();
-
-// ===== CONTROL =====
-function move(d){
- p.x+=d*p.spd;
- p.dir=d;
- p.moving=true;
-}
-
-function attack(){
- sAtk.currentTime=0; sAtk.play();
- enemies.forEach(e=>{
-  if(Math.abs(p.x-e.x)<40){
-   e.hp-=p.dmg;
-   sHit.currentTime=0; sHit.play();
-   if(e.hp<=0) dropItem(e.x,e.y);
-  }
- });
-}
-
-function cast(){
- spells.push({x:p.x+16,y:p.y+16,dir:p.dir});
-}
-
-// ===== DROP ITEM =====
-function dropItem(x,y){
- const items=["Kiếm Sắt","Giáp Da"];
- const it=items[Math.floor(Math.random()*items.length)];
- drops.push({x,y,item:it});
-}
-
-function pickItem(){
- drops.forEach(d=>{
-  if(Math.abs(p.x-d.x)<20){
-   if(d.item==="Kiếm Sắt"){
-    p.sword="Sắt"; p.dmg=30;
-   }
-   if(d.item==="Giáp Da"){
-    p.armor="Da"; p.def=5; p.hp+=20;
-   }
-  }
- });
- drops=drops.filter(d=>Math.abs(p.x-d.x)>=20);
- document.getElementById("sword").innerText=p.sword;
- document.getElementById("armor").innerText=p.armor;
-}
-
-// ===== SAVE =====
-function save(){
- localStorage.setItem("pixel_save",
-  JSON.stringify({hp:p.hp,d:dungeon,m:mapIndex,s:p.sword,a:p.armor})
- );
-}
-function load(){
- let s=localStorage.getItem("pixel_save");
- if(!s)return;
- s=JSON.parse(s);
- p.hp=s.hp; dungeon=s.d; mapIndex=s.m;
- p.sword=s.s; p.armor=s.a;
- document.getElementById("hp").innerText=p.hp;
- document.getElementById("dun").innerText=dungeon;
- document.getElementById("map").innerText=maps[mapIndex].name;
- document.getElementById("sword").innerText=p.sword;
- document.getElementById("armor").innerText=p.armor;
- spawn();
-}
-load();
-setInterval(save,5000);
-
-// ===== DRAW =====
+// ===== DRAW PLAYER =====
 function drawPlayer(){
- let img=idle;
- if(p.moving) img=p.frame?run2:run1;
- if(img.complete)
-  x.drawImage(img,p.x,p.y,p.w,p.h);
- else{
-  x.fillStyle="#7b3ff2";
-  x.fillRect(p.x,p.y,p.w,p.h);
- }
+  let img = imgIdle;
+  if(player.moving) img = player.frame ? imgRun2 : imgRun1;
+  ctx.drawImage(img, player.x, player.y, player.w, player.h);
 }
 
-function loop(){
- x.clearRect(0,0,360,640);
+// ===== DRAW BOSS =====
+function drawBoss(){
+  if(!boss.alive) return;
+  ctx.drawImage(
+    bossImg,
+    boss.frame*40,0,40,40,
+    boss.x,boss.y,40,40
+  );
+}
 
- // MAP
- const m=maps[mapIndex];
- x.fillStyle=m.sky; x.fillRect(0,0,360,640);
- x.fillStyle=m.ground; x.fillRect(0,480,360,160);
+// ===== BOSS MOVE =====
+function updateBoss(){
+  if(!boss.alive) return;
 
- // ENEMIES
- enemies=enemies.filter(e=>e.hp>0);
- enemies.forEach(e=>{
-  x.fillStyle=e.boss?"purple":"red";
-  x.fillRect(e.x,e.y,30,30);
- });
+  boss.x += boss.speed * boss.dir;
+  if(boss.x < 50 || boss.x > 270) boss.dir *= -1;
 
- // DROPS
- drops.forEach(d=>{
-  x.fillStyle="yellow";
-  x.fillRect(d.x,d.y,10,10);
- });
+  if(boss.attacking){
+    boss.frame = 1;
+    boss.attackTick++;
+    if(boss.attackTick > 20){
+      boss.attacking = false;
+      boss.frame = 0;
+    }
+  }
+}
 
- // SPELL
- spells.forEach(s=>{
-  s.x+=s.dir*6;
-  x.fillStyle="orange";
-  x.fillRect(s.x,s.y,10,4);
-  enemies.forEach(e=>{
-   if(Math.abs(s.x-e.x)<20) e.hp-=30;
+// ===== ATTACK =====
+function attack(){
+  if(!boss.alive) return;
+
+  const hit =
+    player.x < boss.x + boss.w &&
+    player.x + player.w > boss.x;
+
+  if(hit){
+    boss.hp -= 10;
+    boss.attacking = true;
+    boss.attackTick = 0;
+
+    if(boss.hp <= 0){
+      boss.alive = false;
+      dropCoin();
+    }
+  }
+}
+
+// ===== DROP GOLD =====
+function dropCoin(){
+  coins.push({
+    x: boss.x + 10,
+    y: boss.y,
+    vy: -2
   });
- });
- spells=spells.filter(s=>s.x>0&&s.x<360);
-
- // ANIM
- p.tick++;
- if(p.tick>15){p.frame^=1;p.tick=0}
-
- drawPlayer();
- pickItem();
- p.moving=false;
-
- if(enemies.length===0){
-  dungeon++;
-  mapIndex=(mapIndex+1)%maps.length;
-  document.getElementById("dun").innerText=dungeon;
-  document.getElementById("map").innerText=maps[mapIndex].name;
-  spawn();
- }
-
- requestAnimationFrame(loop);
 }
-loop();
-</script>
 
+// ===== UPDATE COIN =====
+function updateCoins(){
+  for(let i=coins.length-1;i>=0;i--){
+    const c = coins[i];
+    c.vy += 0.2;
+    c.y += c.vy;
+
+    if(
+      c.x < player.x + player.w &&
+      c.x + 16 > player.x &&
+      c.y < player.y + player.h
+    ){
+      gold += 10;
+      document.getElementById("gold").innerText = gold;
+      coins.splice(i,1);
+    }
+  }
+}
+
+// ===== DRAW COIN =====
+function drawCoins(){
+  coins.forEach(c=>{
+    ctx.drawImage(coinImg,c.x,c.y,16,16);
+  });
+}
+
+// ===== CONTROLS =====
+function moveLeft(){player.x-=player.speed;player.moving=true;}
+function moveRight(){player.x+=player.speed;player.moving=true;}
+
+// ===== GAME LOOP =====
+function gameLoop(){
+  ctx.clearRect(0,0,360,640);
+
+  ctx.fillStyle="#8fd3ff";
+  ctx.fillRect(0,0,360,640);
+
+  ctx.fillStyle="#1f7a1f";
+  ctx.fillRect(0,480,360,160);
+
+  player.tick++;
+  if(player.tick>15){
+    player.frame=(player.frame+1)%2;
+    player.tick=0;
+  }
+
+  updateBoss();
+  updateCoins();
+
+  drawBoss();
+  drawCoins();
+  drawPlayer();
+
+  player.moving=false;
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
 </body>
 </html>
