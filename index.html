@@ -2,128 +2,151 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Pixel Dungeon RPG</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel World RPG</title>
+
 <style>
-body{margin:0;background:black;overflow:hidden}
-canvas{display:block;margin:auto}
-.btn{
- position:fixed;width:50px;height:50px;
- background:white;border-radius:10px;font-size:18px
+body{
+  margin:0;
+  background:#000;
+  overflow:hidden;
 }
-#l{left:20px;bottom:80px}
-#r{left:140px;bottom:80px}
-#a{right:20px;bottom:80px}
-#s{right:20px;bottom:140px;background:orange}
+canvas{
+  display:block;
+  margin:auto;
+  background:#8fd3ff;
+}
+#ui{
+  position:fixed;
+  top:10px;
+  left:10px;
+  color:white;
+  background:rgba(0,0,0,0.6);
+  padding:8px;
+  border-radius:8px;
+  font-size:14px;
+}
+.controls{
+  position:fixed;
+  bottom:20px;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:20px;
+}
+.btn{
+  width:60px;
+  height:60px;
+  border-radius:12px;
+  border:none;
+  font-size:24px;
+}
 </style>
 </head>
+
 <body>
 
-<canvas id="c" width="360" height="640"></canvas>
-<button id="l" class="btn">◀</button>
-<button id="r" class="btn">▶</button>
-<button id="a" class="btn">⚔</button>
-<button id="s" class="btn">🔥</button>
+<div id="ui">
+LV: 1<br>
+HP: 100<br>
+Pet: Slime
+</div>
+
+<canvas id="game" width="360" height="640"></canvas>
+
+<div class="controls">
+  <button class="btn" onclick="moveLeft()">←</button>
+  <button class="btn" onclick="attack()">⚔</button>
+  <button class="btn" onclick="moveRight()">→</button>
+</div>
 
 <script>
-const ctx=c.getContext("2d");
-
-// ===== LOAD SPRITE =====
-const playerImg=new Image();
-playerImg.src="https://i.imgur.com/1XKz8vR.png";
-const bossImg=new Image();
-bossImg.src="https://i.imgur.com/l7YpY7C.png";
-
-// ===== GAME STATE =====
-let dungeon=1;
-let gold=0;
-let skillCD=0;
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
 // ===== PLAYER =====
-const p={x:160,y:420,hp:100,max:100,frame:0,dir:1};
+const player = {
+  x: 160,
+  y: 420,
+  w: 32,
+  h: 32,
+  speed: 2,
+  dir: "right",
+  moving: false,
+  frame: 0,
+  tick: 0
+};
 
-// ===== BOSS =====
-let boss={x:260,y:420,hp:200,max:200,alive:true};
+// ===== LOAD IMAGES =====
+const imgIdle = new Image();
+imgIdle.src = "player_idle.png";
 
-// ===== CONTROL =====
-let L=false,R=false,ATK=false,SKILL=false;
-l.ontouchstart=()=>L=true; l.ontouchend=()=>L=false;
-r.ontouchstart=()=>R=true; r.ontouchend=()=>R=false;
-a.ontouchstart=()=>ATK=true; a.ontouchend=()=>ATK=false;
-s.ontouchstart=()=>SKILL=true; s.ontouchend=()=>SKILL=false;
+const imgRun1 = new Image();
+imgRun1.src = "player_run1.png";
 
-// ===== UPDATE =====
-function update(){
- if(L){p.x-=3;p.frame++}
- if(R){p.x+=3;p.frame++}
- p.x=Math.max(0,Math.min(320,p.x));
+const imgRun2 = new Image();
+imgRun2.src = "player_run2.png";
 
- if(skillCD>0)skillCD--;
+// ===== DRAW PLAYER =====
+function drawPlayer(){
+  let img = imgIdle;
 
- // attack
- if(ATK && boss.alive && Math.abs(p.x-boss.x)<40){
-  boss.hp-=1;
- }
+  if(player.moving){
+    img = player.frame === 0 ? imgRun1 : imgRun2;
+  }
 
- // skill
- if(SKILL && skillCD==0 && boss.alive){
-  boss.hp-=20;
-  skillCD=120;
- }
-
- // boss dead
- if(boss.hp<=0 && boss.alive){
-  boss.alive=false;
-  gold+=20;
-  setTimeout(nextDungeon,1000);
- }
+  if(img.complete && img.naturalWidth > 0){
+    ctx.drawImage(img, player.x, player.y, player.w, player.h);
+  }else{
+    // fallback pixel nếu chưa có ảnh
+    ctx.fillStyle = "#7b3ff2";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+  }
 }
 
-// ===== NEXT DUNGEON =====
-function nextDungeon(){
- dungeon++;
- boss={x:260,y:420,hp:200+50*dungeon,max:200+50*dungeon,alive:true};
+// ===== CONTROLS =====
+function moveLeft(){
+  player.x -= player.speed;
+  player.dir = "left";
+  player.moving = true;
+}
+function moveRight(){
+  player.x += player.speed;
+  player.dir = "right";
+  player.moving = true;
+}
+function attack(){
+  alert("Đánh!");
 }
 
-// ===== DRAW =====
-function bar(x,y,w,h,val,max,col){
- ctx.fillStyle="gray";
- ctx.fillRect(x,y,w,h);
- ctx.fillStyle=col;
- ctx.fillRect(x,y,w*(val/max),h);
+// ===== GAME LOOP =====
+function gameLoop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // SKY
+  ctx.fillStyle = "#8fd3ff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // GROUND
+  ctx.fillStyle = "#1f7a1f";
+  ctx.fillRect(0,480,canvas.width,160);
+
+  // ANIMATION
+  player.tick++;
+  if(player.tick > 15){
+    player.frame = (player.frame + 1) % 2;
+    player.tick = 0;
+  }
+
+  drawPlayer();
+
+  player.moving = false;
+  requestAnimationFrame(gameLoop);
 }
 
-function draw(){
- // background
- ctx.fillStyle=dungeon==1?"#87ceeb":"#333";
- ctx.fillRect(0,0,360,640);
- ctx.fillStyle=dungeon==1?"#1f7a1f":"#111";
- ctx.fillRect(0,480,360,160);
-
- // player (animation)
- ctx.drawImage(playerImg,(p.frame%4)*32,0,32,32,p.x,p.y,32,32);
-
- // boss
- if(boss.alive)
-  ctx.drawImage(bossImg,boss.x,boss.y,48,48);
-
- // UI
- bar(10,10,100,10,p.hp,p.max,"red");
- if(boss.alive)
-  bar(10,30,120,10,boss.hp,boss.max,"purple");
-
- ctx.fillStyle="white";
- ctx.fillText("Gold: "+gold,10,55);
- ctx.fillText("Dungeon: "+dungeon,10,70);
-}
-
-function loop(){
- update();
- draw();
- requestAnimationFrame(loop);
-}
-loop();
+gameLoop();
 </script>
+
 </body>
 </html>
 
