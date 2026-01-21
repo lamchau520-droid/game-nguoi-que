@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Pixel RPG</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+body{margin:0;background:#020617}
+canvas{display:block;margin:auto;background:#1e293b}
+#ui{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+button{padding:10px 14px;font-size:16px;border:none;border-radius:10px}
+#start{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px}
+</style>
+</head>
+
+<body>
+
+<canvas id="game" width="360" height="640"></canvas>
+
+<button id="start">Bắt đầu</button>
+
+<div id="ui">
+<button ontouchstart="move(-1)">⬅</button>
+<button ontouchstart="attack()">⚔</button>
+<button ontouchstart="skill()">🔥</button>
+<button ontouchstart="move(1)">➡</button>
+</div>
+
+<script>
+// ===== CANVAS =====
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
+
+// ===== ẢNH =====
+const playerImg=new Image();
+playerImg.src="knight.png";
+
+// ===== ÂM THANH =====
+const bgm=new Audio("bgm.mp3");
+bgm.loop=true; bgm.volume=0.5;
+
+const bossBgm=new Audio("boss.mp3");
+bossBgm.loop=true; bossBgm.volume=0.6;
+
+const atkSound=new Audio("atk.mp3");
+const skillSound=new Audio("skill.mp3");
+
+// ===== NHÂN VẬT =====
+let player={x:160,y:500,hp:100};
+
+// ===== PET =====
+let pet={
+ name:"Slime",
+ level:1,
+ exp:0,
+ damage:1,
+ color:"lime",
+ x:0,y:0
+};
+
+// ===== QUEST =====
+let quest={
+ title:"Đánh boss 5 lần",
+ progress:0,
+ target:5,
+ done:false
+};
+
+// ===== BOSS =====
+let boss={
+ x:140,
+ y:180,
+ hp:300,
+ maxHp:300,
+ active:false
+};
+
+let skillCD=0;
+let started=false;
+let bossMusic=false;
+
+// ===== START =====
+document.getElementById("start").onclick=()=>{
+ bgm.play();
+ started=true;
+ document.getElementById("start").style.display="none";
+};
+
+// ===== ĐI CHUYỂN =====
+function move(d){
+ player.x+=d*20;
+ if(player.x<0) player.x=0;
+ if(player.x>320) player.x=320;
+}
+
+// ===== ĐÁNH =====
+function attack(){
+ atkSound.currentTime=0;
+ atkSound.play();
+ if(boss.active){
+  boss.hp-=5;
+  quest.progress++;
+  pet.exp+=2;
+ }
+}
+
+// ===== SKILL =====
+function skill(){
+ if(skillCD>0) return;
+ skillCD=120;
+ skillSound.currentTime=0;
+ skillSound.play();
+ boss.hp-=15;
+}
+
+// ===== PET TIẾN HÓA =====
+function petEvolution(){
+ if(pet.level===1 && pet.exp>=20){
+  pet.level=2;
+  pet.name="Big Slime";
+  pet.damage=3;
+  pet.color="cyan";
+  alert("🐉 Pet tiến hóa!");
+ }
+}
+
+// ===== KIỂM TRA BOSS =====
+function checkBoss(){
+ if(Math.abs(player.y-boss.y)<300 && !bossMusic){
+  boss.active=true;
+  bgm.pause();
+  bossBgm.play();
+  bossMusic=true;
+ }
+}
+
+// ===== VẼ THANH MÁU =====
+function drawHP(x,y,hp,max){
+ ctx.fillStyle="red";
+ ctx.fillRect(x,y,60,6);
+ ctx.fillStyle="lime";
+ ctx.fillRect(x,y,60*(hp/max),6);
+}
+
+// ===== UPDATE =====
+function update(){
+ if(!started) return;
+
+ if(skillCD>0) skillCD--;
+
+ // PET theo người
+ pet.x+=(player.x-20-pet.x)*0.1;
+ pet.y+=(player.y-pet.y)*0.1;
+
+ // PET đánh boss
+ if(boss.active && Math.abs(pet.x-boss.x)<60){
+  boss.hp-=pet.damage;
+  pet.exp++;
+ }
+
+ petEvolution();
+ checkBoss();
+
+ // Boss chết
+ if(boss.hp<=0){
+  boss.hp=boss.maxHp;
+  quest.done=true;
+  bossBgm.pause();
+  bossBgm.currentTime=0;
+  bgm.play();
+  bossMusic=false;
+  alert("🎉 Hạ boss – hoàn thành quest!");
+ }
+}
+
+// ===== DRAW =====
+function draw(){
+ ctx.clearRect(0,0,c.width,c.height);
+
+ // MAP
+ ctx.fillStyle="#16a34a";
+ ctx.fillRect(0,560,360,80);
+
+ // PLAYER
+ ctx.drawImage(playerImg,player.x,player.y,40,40);
+ drawHP(player.x,player.y-10,player.hp,100);
+
+ // PET
+ ctx.fillStyle=pet.color;
+ ctx.fillRect(pet.x,pet.y,18,18);
+ ctx.fillStyle="white";
+ ctx.fillText("Lv."+pet.level,pet.x,pet.y-5);
+
+ // BOSS
+ ctx.fillStyle="purple";
+ ctx.fillRect(boss.x,boss.y,80,80);
+ drawHP(boss.x,boss.y-10,boss.hp,boss.maxHp);
+
+ // UI
+ ctx.fillStyle="white";
+ ctx.fillText("Quest: "+quest.progress+"/"+quest.target,10,20);
+}
+
+// ===== LOOP =====
+function loop(){
+ update();
+ draw();
+ requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
