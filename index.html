@@ -2,210 +2,118 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pixel RPG – Dungeon Chest</title>
+<title>Pixel RPG Full</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
-body{margin:0;background:#000;color:#fff;font-family:Arial}
-canvas{display:block;margin:auto;image-rendering:pixelated}
-#ui{position:fixed;bottom:5px;left:50%;transform:translateX(-50%)}
-button{padding:10px;border-radius:8px;border:0;margin:2px}
-#hud{position:fixed;top:5px;left:5px;background:#111;padding:6px;border-radius:8px;font-size:12px}
+body{margin:0;background:#000;color:#fff}
+canvas{display:block;margin:auto;background:#7ec0ee}
+#ui{position:fixed;top:5px;left:5px;background:rgba(0,0,0,.6);padding:6px;border-radius:8px}
+#controls{position:fixed;bottom:10px;left:0;right:0;text-align:center}
+button{font-size:20px;padding:10px;margin:3px;border-radius:10px}
 </style>
 </head>
+
 <body>
-
-<canvas id="c" width="384" height="640"></canvas>
-<div id="hud"></div>
-
 <div id="ui">
-<button onclick="move(-1)">⬅</button>
-<button onclick="atk()">⚔</button>
-<button onclick="skill()">🔥</button>
-<button onclick="move(1)">➡</button>
+HP:<span id="hp">100</span><br>
+Boss:<span id="bossHp">200</span>
+</div>
+
+<canvas id="game" width="360" height="600"></canvas>
+
+<div id="controls">
+<button onclick="move(0,-1)">⬆</button><br>
+<button onclick="move(-1,0)">⬅</button>
+<button onclick="attack()">⚔</button>
+<button onclick="move(1,0)">➡</button><br>
+<button onclick="move(0,1)">⬇</button>
 </div>
 
 <script>
-const c=document.getElementById("c"),x=c.getContext("2d");
-const T=32;
-let cd=0;
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
 
-// ===== PLAYER =====
-let player={x:160,y:360,atk:12,lv:1};
-let pet={lv:1};
-let inv={};
+const playerImg=new Image(); playerImg.src="player.png";
+const bossImg=new Image(); bossImg.src="boss.png";
+const petImg=new Image(); petImg.src="pet.png";
 
-// ===== DUNGEON =====
-let dungeons=[{name:"Hang Đá",lv:1},{name:"Rừng Bóng Tối",lv:3}];
-let currentDungeon=-1;
-let floor=1;
+let frame=0;
 
-// ===== ENEMY / BOSS =====
-let enemies=[];
-let boss=null;
+const player={x:160,y:380,dir:0,frame:0,hp:100};
+const pet={x:140,y:400,frame:0};
+const boss={x:120,y:200,hp:200,phase:1,frame:0};
 
-// ===== CHEST =====
-let chest=null;
-
-// ===== MAP =====
-function map(){
- for(let y=0;y<20;y++)
- for(let x2=0;x2<12;x2++){
-  x.fillStyle=y<9?"#7dd3fc":y==9?"#22c55e":"#14532d";
-  x.fillRect(x2*T,y*T,T,T);
- }
- if(currentDungeon<0){
-  x.fillStyle="#7c3aed";
-  x.fillRect(176,320,32,32);
- }
+function move(dx,dy){
+  player.x+=dx*15;
+  player.y+=dy*15;
+  if(dx>0)player.dir=2;
+  if(dx<0)player.dir=1;
+  if(dy>0)player.dir=0;
+  if(dy<0)player.dir=3;
+  player.frame=(player.frame+1)%4;
 }
 
-// ===== DRAW =====
+function attack(){
+  if(Math.abs(player.x-boss.x)<50){
+    boss.hp-=20;
+    if(boss.hp<100) boss.phase=2;
+    if(boss.hp<=0){
+      alert("Bạn đã hạ boss cuối!");
+      boss.hp=200;
+      boss.phase=1;
+    }
+  }
+}
+
 function drawPlayer(){
- x.fillStyle="#000";
- x.fillRect(player.x,player.y,24,24);
+  ctx.drawImage(
+    playerImg,
+    player.frame*32, player.dir*32,
+    32,32,
+    player.x,player.y,
+    32,32
+  );
 }
+
 function drawPet(){
- x.fillStyle=pet.lv>=3?"#facc15":"#a855f7";
- x.fillRect(player.x-18,player.y+8,14,14);
+  pet.x += (player.x-30-pet.x)*0.1;
+  pet.y += (player.y+10-pet.y)*0.1;
+  pet.frame=(pet.frame+1)%3;
+  ctx.drawImage(
+    petImg,
+    pet.frame*32,0,
+    32,32,
+    pet.x,pet.y,
+    24,24
+  );
 }
-function drawEnemies(){
- enemies.forEach(e=>{
-  if(e.hp<=0)return;
-  x.fillStyle="#991b1b";
-  x.fillRect(e.x,e.y,20,20);
-  x.fillStyle="red";
-  x.fillRect(e.x,e.y-4,20*(e.hp/e.max),3);
- });
-}
+
 function drawBoss(){
- if(!boss||boss.hp<=0)return;
- x.fillStyle="#7f1d1d";
- x.fillRect(boss.x,boss.y,40,40);
- x.fillStyle="red";
- x.fillRect(boss.x,boss.y-6,40*(boss.hp/boss.max),4);
-}
-function drawChest(){
- if(!chest)return;
- x.fillStyle="#facc15";
- x.fillRect(chest.x,chest.y,24,24);
+  let f=boss.phase===1?0:2;
+  ctx.drawImage(
+    bossImg,
+    f*64,0,
+    64,64,
+    boss.x,boss.y,
+    64,64
+  );
 }
 
-// ===== CONTROL =====
-function move(d){
- player.x+=d*16;
- player.x=Math.max(0,Math.min(c.width-24,player.x));
- if(currentDungeon<0 && player.x>160 && player.x<200)openMenu();
- checkChest();
-}
-
-function atk(){
- enemies.forEach(e=>{
-  if(e.hp>0 && Math.abs(player.x-e.x)<50){
-   e.hp-=player.atk+pet.lv*2;
-  }
- });
- if(boss && boss.hp>0 && Math.abs(player.x-boss.x)<70){
-  boss.hp-=player.atk+pet.lv*3;
-  if(boss.hp<=0)spawnChest(true);
- }
-}
-
-function skill(){
- if(cd>0)return;
- cd=120;
- enemies.forEach(e=>e.hp-=25+pet.lv*2);
- if(boss)boss.hp-=40+pet.lv*3;
-}
-
-// ===== DUNGEON =====
-function openMenu(){
- let html="<b>Chọn Dungeon</b><br>";
- dungeons.forEach((d,i)=>{
-  html+=player.lv>=d.lv
-   ? `<button onclick="enter(${i})">${d.name}</button><br>`
-   : `<div style="opacity:.4">${d.name} (Lv ${d.lv})</div>`;
- });
- hudBox(html,true);
-}
-function enter(i){
- currentDungeon=i;floor=1;spawnFloor();hudBox("",false);
-}
-function spawnFloor(){
- enemies=[];boss=null;chest=null;
- if(floor<3){
-  for(let i=0;i<3;i++)
-   enemies.push({x:80+i*80,y:200,hp:40+floor*10,max:40+floor*10});
- }else{
-  boss={x:160,y:120,hp:200+floor*60,max:200+floor*60};
- }
-}
-function nextFloor(){
- floor++;
- if(floor>3){exitDungeon();return;}
- spawnFloor();
-}
-function exitDungeon(){
- player.lv++;pet.lv++;
- currentDungeon=-1;player.x=160;
- enemies=[];boss=null;chest=null;
-}
-
-// ===== CHEST =====
-function spawnChest(isBoss){
- chest={x:160,y:200,boss:isBoss};
-}
-function checkChest(){
- if(chest && Math.abs(player.x-chest.x)<40){
-  if(chest.boss){
-   inv["Vàng"]=(inv["Vàng"]||0)+50;
-   inv["Kiếm"]=(inv["Kiếm"]||0)+1;
-   pet.lv++;
-   exitDungeon();
-  }else{
-   inv["Vàng"]=(inv["Vàng"]||0)+15;
-   if(Math.random()<0.3)inv["Kiếm"]=(inv["Kiếm"]||0)+1;
-   chest=null;
-   nextFloor();
-  }
- }
-}
-
-// ===== CLEAR CHECK =====
-function checkClear(){
- if(currentDungeon>=0 && enemies.length){
-  if(enemies.every(e=>e.hp<=0)){
-   spawnChest(false);
-   enemies=[];
-  }
- }
-}
-
-// ===== HUD =====
-function hud(){
- let t=`LV:${player.lv}<br>Pet:${pet.lv}<br>`;
- t+=currentDungeon>=0?`Dungeon Tầng ${floor}<br>`:"Làng<br>";
- t+="Bag: ";
- for(let i in inv)t+=i+"("+inv[i]+") ";
- document.getElementById("hud").innerHTML=t;
-}
-function hudBox(txt,show){
- let h=document.getElementById("hud");
- if(show)h.innerHTML=txt;
-}
-
-// ===== LOOP =====
 function loop(){
- x.clearRect(0,0,c.width,c.height);
- map();
- drawEnemies();
- drawBoss();
- drawChest();
- drawPlayer();
- drawPet();
- hud();
- checkClear();
- if(cd>0)cd--;
- requestAnimationFrame(loop);
+  frame++;
+  ctx.clearRect(0,0,c.width,c.height);
+
+  ctx.fillStyle="#1f7a1f";
+  ctx.fillRect(0,300,c.width,300);
+
+  drawBoss();
+  drawPet();
+  drawPlayer();
+
+  document.getElementById("hp").innerText=player.hp;
+  document.getElementById("bossHp").innerText=boss.hp;
+
+  requestAnimationFrame(loop);
 }
 loop();
 </script>
