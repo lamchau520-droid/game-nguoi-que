@@ -4,11 +4,9 @@
 <meta charset="UTF-8">
 <title>Game Người Que</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-html,body{
+body{
   margin:0;
-  padding:0;
   background:black;
 }
 canvas{
@@ -18,24 +16,23 @@ canvas{
 }
 </style>
 </head>
-
 <body>
+
 <canvas id="game"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// KHUNG GAME CỐ ĐỊNH (DỄ NHÌN TRÊN ĐIỆN THOẠI)
 canvas.width = 360;
 canvas.height = 640;
 
 // LOAD ẢNH
 const playerImg = new Image();
-playerImg.src = "./player_walk.png";
+playerImg.src = "player_walk.png";
 
 const groundImg = new Image();
-groundImg.src = "./ground.png";
+groundImg.src = "ground.png";
 
 let loaded = 0;
 [playerImg, groundImg].forEach(img=>{
@@ -44,7 +41,7 @@ let loaded = 0;
 
 // PLAYER
 const player = {
-  x: 80,
+  x: 150,
   y: 0,
   w: 32,
   h: 32,
@@ -52,17 +49,17 @@ const player = {
   tick: 0
 };
 
-function gameLoop(){
+function loop(){
   if(loaded < 2){
     ctx.fillStyle="white";
-    ctx.fillText("Loading...",140,320);
-    requestAnimationFrame(gameLoop);
+    ctx.fillText("Loading...",150,300);
+    requestAnimationFrame(loop);
     return;
   }
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // ĐẤT
+  // GROUND
   for(let x=0;x<canvas.width;x+=32){
     ctx.drawImage(groundImg,x,canvas.height-32,32,32);
   }
@@ -76,20 +73,23 @@ function gameLoop(){
   // ANIMATION
   player.tick++;
   if(player.tick > 8){
-    player.frame = (player.frame+1)%4;
+    player.frame = (player.frame + 1) % 4;
     player.tick = 0;
   }
 
+  // VẼ NHÂN VẬT
   ctx.drawImage(
     playerImg,
-    player.frame*32,0,32,32,
-    player.x,player.y,48,48
+    player.frame * 32, 0,   // cắt frame
+    32, 32,
+    player.x, player.y,
+    48, 48                 // phóng to
   );
 
-  requestAnimationFrame(gameLoop);
+  requestAnimationFrame(loop);
 }
 
-gameLoop();
+loop();
 </script>
 </body>
 </html>
