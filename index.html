@@ -4,22 +4,30 @@
 <meta charset="UTF-8">
 <title>Game Người Que</title>
 <style>
-body { margin:0; background:#222; overflow:hidden; }
-canvas { background:#6ec6ff; display:block; }
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: black;
+}
+canvas {
+  display: block;
+  background: #6ec6ff;
+}
 
 .btn {
-  position:fixed;
-  bottom:20px;
-  width:60px;
-  height:60px;
-  border-radius:50%;
-  background:#fff;
-  font-size:20px;
-  border:none;
+  position: fixed;
+  bottom: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 20px;
+  border: none;
 }
-#left { left:20px; }
-#right { left:100px; }
-#attack { right:20px; background:#ff7675; }
+#left { left: 20px; }
+#right { left: 100px; }
+#attack { right: 20px; background: #ff7675; }
 </style>
 </head>
 <body>
@@ -33,10 +41,19 @@ canvas { background:#6ec6ff; display:block; }
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
 
-const load = src => { const i = new Image(); i.src = src; return i; };
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+const load = src => {
+  const i = new Image();
+  i.src = src;
+  return i;
+};
 
 const playerImg = {
   idle: load("player_idle.png"),
@@ -48,8 +65,10 @@ const bossImg = load("boss.png");
 const groundImg = load("ground.png");
 
 const player = {
-  x: 100, y: canvas.height - 160,
-  w: 48, h: 48,
+  x: 100,
+  y: 0,
+  w: 48,
+  h: 48,
   vx: 0,
   frame: 0,
   action: "idle"
@@ -57,17 +76,23 @@ const player = {
 
 const boss = {
   x: 900,
-  y: canvas.height - 160,
-  w: 64, h: 64,
+  y: 0,
+  w: 64,
+  h: 64,
   hp: 100
 };
 
 let camX = 0;
-let keys = {};
+const GROUND_Y = () => canvas.height - 64;
 
 function update() {
+  player.y = GROUND_Y() - player.h;
+  boss.y = GROUND_Y() - boss.h;
+
   player.x += player.vx;
+
   camX = player.x - canvas.width / 2;
+  if (camX < 0) camX = 0;
 
   if (player.vx !== 0 && player.action !== "attack") {
     player.action = "walk";
@@ -85,24 +110,32 @@ function update() {
     }
   }
 
-  // đánh boss
   if (
     player.action === "attack" &&
     Math.abs(player.x - boss.x) < 60
   ) {
-    boss.hp -= 1;
+    boss.hp = Math.max(0, boss.hp - 1);
   }
 }
 
 function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // nền đất
-  for (let i = -1; i < 30; i++) {
-    ctx.drawImage(groundImg, i*64 - camX, canvas.height - 64, 64, 64);
+  // vẽ đất lặp vô hạn
+  const tileW = 64;
+  const start = Math.floor(camX / tileW) - 1;
+  const end = start + Math.ceil(canvas.width / tileW) + 2;
+
+  for (let i = start; i < end; i++) {
+    ctx.drawImage(
+      groundImg,
+      i * tileW - camX,
+      GROUND_Y(),
+      tileW,
+      tileW
+    );
   }
 
-  // boss
   if (boss.hp > 0) {
     ctx.drawImage(bossImg, boss.x - camX, boss.y, boss.w, boss.h);
     ctx.fillStyle = "red";
@@ -111,6 +144,7 @@ function draw() {
 
   const img = playerImg[player.action];
   const frame = Math.floor(player.frame) % 4;
+
   ctx.drawImage(
     img,
     frame * 48, 0, 48, 48,
@@ -133,7 +167,6 @@ document.getElementById("attack").ontouchstart = () => {
   player.action = "attack";
   player.frame = 0;
 };
-
 document.body.ontouchend = () => player.vx = 0;
 </script>
 </body>
