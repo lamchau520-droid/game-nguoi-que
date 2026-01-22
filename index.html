@@ -5,14 +5,11 @@
 <title>Game Người Que</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{
-  margin:0;
-  background:black;
-}
+body{ margin:0; background:black; }
 canvas{
   display:block;
   margin:auto;
-  background:#8fd3ff;
+  background:#87ceeb;
 }
 </style>
 </head>
@@ -27,69 +24,58 @@ const ctx = canvas.getContext("2d");
 canvas.width = 360;
 canvas.height = 640;
 
-// LOAD ẢNH
+// ===== LOAD ẢNH =====
 const playerImg = new Image();
 playerImg.src = "player_walk.png";
 
 const groundImg = new Image();
 groundImg.src = "ground.png";
 
-let loaded = 0;
-[playerImg, groundImg].forEach(img=>{
-  img.onload = ()=>loaded++;
-});
-
-// PLAYER
+// ===== PLAYER =====
 const player = {
   x: 150,
-  y: 0,
+  y: 500,
   w: 32,
   h: 32,
   frame: 0,
   tick: 0
 };
 
-function loop(){
-  if(loaded < 2){
-    ctx.fillStyle="white";
-    ctx.fillText("Loading...",150,300);
-    requestAnimationFrame(loop);
-    return;
-  }
+playerImg.onload = () => {
+  requestAnimationFrame(gameLoop);
+};
 
+function gameLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // GROUND
-  for(let x=0;x<canvas.width;x+=32){
-    ctx.drawImage(groundImg,x,canvas.height-32,32,32);
-  }
+  // NỀN
+  ctx.fillStyle = "#87ceeb";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // GRAVITY
-  player.y += 4;
-  if(player.y + player.h > canvas.height-32){
-    player.y = canvas.height-32-player.h;
+  // GROUND
+  for(let i=0;i<canvas.width;i+=32){
+    ctx.drawImage(groundImg,i,canvas.height-32,32,32);
   }
 
   // ANIMATION
   player.tick++;
-  if(player.tick > 8){
+  if(player.tick > 10){
     player.frame = (player.frame + 1) % 4;
     player.tick = 0;
   }
 
-  // VẼ NHÂN VẬT
+  // VẼ NHÂN VẬT (CẮT FRAME)
   ctx.drawImage(
     playerImg,
-    player.frame * 32, 0,   // cắt frame
+    player.frame * 32, 0,   // ❗ QUAN TRỌNG
     32, 32,
     player.x, player.y,
-    48, 48                 // phóng to
+    48, 48
   );
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
-
-loop();
 </script>
+
 </body>
 </html>
