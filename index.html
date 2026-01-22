@@ -4,33 +4,27 @@
 <meta charset="UTF-8">
 <title>Game Người Que</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  background: #000;
-}
-canvas {
-  display: block;
-  background: #6ec6ff;
-}
-
-/* nút điều khiển */
-.btn {
-  position: fixed;
-  bottom: 20px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: none;
-  font-size: 22px;
-  background: white;
-  opacity: 0.85;
-}
-#left { left: 20px; }
-#right { left: 100px; }
-#attack { right: 20px; background: #ff7675; color: white; }
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #6ec6ff;
+  }
+  canvas {
+    display: block;
+  }
+  .btn {
+    position: fixed;
+    bottom: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    font-size: 24px;
+  }
+  #left { left: 20px; }
+  #right { left: 90px; }
+  #attack { right: 20px; background: red; color: white; }
 </style>
 </head>
 
@@ -40,109 +34,122 @@ canvas {
 
 <button id="left" class="btn">◀</button>
 <button id="right" class="btn">▶</button>
-<button id="attack" class="btn">⚔</button>
+<button id="attack" class="btn">✖</button>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-}
-resize();
-window.addEventListener("resize", resize);
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// load ảnh
-function load(src) {
-  const img = new Image();
-  img.src = src;
-  return img;
-}
+// ===== LOAD ẢNH =====
+const groundImg = new Image();
+groundImg.src = "ground.png";
 
-const playerImg = {
-  idle: load("player_idle.png"),
-  walk: load("player_walk.png"),
-  attack: load("player_attack.png")
-};
+const playerIdle = new Image();
+playerIdle.src = "player_idle.png";
 
-const bossImg = load("boss.png");
-const groundImg = load("ground.png");
+const playerWalk = new Image();
+playerWalk.src = "player_walk.png";
 
-// mặt đất
-const groundY = canvas.height - 140;
+const playerAttack = new Image();
+playerAttack.src = "player_attack.png";
 
-// player
+const bossImg = new Image();
+bossImg.src = "boss.png";
+
+// ===== PLAYER =====
 const player = {
-  x: 100,
-  y: groundY - 96,
-  w: 96,
-  h: 96,
-  vx: 0,
-  frame: 0,
-  action: "idle"
+  x: 200,
+  y: canvas.height - 140,
+  w: 48,
+  h: 64,
+  speed: 4,
+  dir: 1,
+  attacking: false,
+  moving: false
 };
 
-// boss
+// ===== BOSS =====
 const boss = {
   x: 600,
-  y: groundY - 96,
-  w: 96,
-  h: 96,
+  y: canvas.height - 150,
+  w: 80,
+  h: 80,
   hp: 100
 };
 
 let camX = 0;
 
+// ===== INPUT =====
+let left = false;
+let right = false;
+
+document.getElementById("left").ontouchstart = () => left = true;
+document.getElementById("left").ontouchend = () => left = false;
+
+document.getElementById("right").ontouchstart = () => right = true;
+document.getElementById("right").ontouchend = () => right = false;
+
+document.getElementById("attack").ontouchstart = () => {
+  player.attacking = true;
+  setTimeout(() => player.attacking = false, 300);
+  if (Math.abs(player.x - boss.x) < 80) {
+    boss.hp -= 10;
+  }
+};
+
+// ===== UPDATE =====
 function update() {
-  player.x += player.vx;
+  player.moving = false;
 
-  // camera theo player
-  camX = player.x - canvas.width / 2;
+  if (left) {
+    player.x -= player.speed;
+    player.dir = -1;
+    player.moving = true;
+  }
+  if (right) {
+    player.x += player.speed;
+    player.dir = 1;
+    player.moving = true;
+  }
+
+  camX = player.x - 200;
   if (camX < 0) camX = 0;
-
-  // animation
-  if (player.vx !== 0 && player.action !== "attack") {
-    player.action = "walk";
-    player.frame += 0.2;
-  } else if (player.action !== "attack") {
-    player.action = "idle";
-    player.frame = 0;
-  }
-
-  if (player.action === "attack") {
-    player.frame += 0.25;
-    if (player.frame >= 4) {
-      player.action = "idle";
-      player.frame = 0;
-    }
-  }
-
-  // đánh boss
-  if (
-    player.action === "attack" &&
-    Math.abs(player.x - boss.x) < 80 &&
-    boss.hp > 0
-  ) {
-    boss.hp -= 1;
-  }
 }
 
+// ===== DRAW =====
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // nền đất lặp
-  for (let i = -2; i < 50; i++) {
+  // NỀN TRỜI
+  ctx.fillStyle = "#6ec6ff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // GROUND LẶP
+  for (let i = -1; i < 50; i++) {
     ctx.drawImage(
       groundImg,
-      i * 64 - camX,
-      groundY,
+      i * 64 - camX % 64,
+      canvas.height - 64,
       64,
       64
     );
   }
 
-  // boss
+  // PLAYER
+  let img = playerIdle;
+  if (player.attacking) img = playerAttack;
+  else if (player.moving) img = playerWalk;
+
+  ctx.save();
+  ctx.translate(player.x - camX + player.w / 2, player.y);
+  ctx.scale(player.dir, 1);
+  ctx.drawImage(img, -player.w / 2, 0, player.w, player.h);
+  ctx.restore();
+
+  // ===== BOSS (CHỈ VẼ 1 LẦN) =====
   if (boss.hp > 0) {
     ctx.drawImage(
       bossImg,
@@ -152,43 +159,24 @@ function draw() {
       boss.h
     );
 
-    // máu boss
+    // MÁU BOSS
     ctx.fillStyle = "red";
-    ctx.fillRect(boss.x - camX, boss.y - 15, boss.hp, 6);
+    ctx.fillRect(
+      boss.x - camX,
+      boss.y - 10,
+      boss.w * (boss.hp / 100),
+      6
+    );
   }
-
-  // player
-  const img = playerImg[player.action];
-  const frame = Math.floor(player.frame) % 4;
-
-  ctx.drawImage(
-    img,
-    frame * 48, 0, 48, 48,
-    player.x - camX,
-    player.y,
-    player.w,
-    player.h
-  );
 }
 
+// ===== LOOP (CHỈ 1 LẦN) =====
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
 loop();
-
-// điều khiển cảm ứng
-document.getElementById("left").ontouchstart = () => player.vx = -4;
-document.getElementById("right").ontouchstart = () => player.vx = 4;
-document.getElementById("attack").ontouchstart = () => {
-  if (player.action !== "attack") {
-    player.action = "attack";
-    player.frame = 0;
-  }
-};
-
-document.body.ontouchend = () => player.vx = 0;
 </script>
 
 </body>
