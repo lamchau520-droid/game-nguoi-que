@@ -3,79 +3,138 @@
 <head>
 <meta charset="UTF-8">
 <title>Game Người Que</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{ margin:0; background:black; }
-canvas{
-  display:block;
-  margin:auto;
-  background:#87ceeb;
+body { margin:0; background:#222; overflow:hidden; }
+canvas { background:#6ec6ff; display:block; }
+
+.btn {
+  position:fixed;
+  bottom:20px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:#fff;
+  font-size:20px;
+  border:none;
 }
+#left { left:20px; }
+#right { left:100px; }
+#attack { right:20px; background:#ff7675; }
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
 
+<button id="left" class="btn">◀</button>
+<button id="right" class="btn">▶</button>
+<button id="attack" class="btn">⚔</button>
+
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
-canvas.width = 360;
-canvas.height = 640;
+const load = src => { const i = new Image(); i.src = src; return i; };
 
-// ===== LOAD ẢNH =====
-const playerImg = new Image();
-playerImg.src = "player_walk.png";
+const playerImg = {
+  idle: load("player_idle.png"),
+  walk: load("player_walk.png"),
+  attack: load("player_attack.png")
+};
 
-const groundImg = new Image();
-groundImg.src = "ground.png";
+const bossImg = load("boss.png");
+const groundImg = load("ground.png");
 
-// ===== PLAYER =====
 const player = {
-  x: 150,
-  y: 500,
-  w: 32,
-  h: 32,
+  x: 100, y: canvas.height - 160,
+  w: 48, h: 48,
+  vx: 0,
   frame: 0,
-  tick: 0
+  action: "idle"
 };
 
-playerImg.onload = () => {
-  requestAnimationFrame(gameLoop);
+const boss = {
+  x: 900,
+  y: canvas.height - 160,
+  w: 64, h: 64,
+  hp: 100
 };
 
-function gameLoop(){
+let camX = 0;
+let keys = {};
+
+function update() {
+  player.x += player.vx;
+  camX = player.x - canvas.width / 2;
+
+  if (player.vx !== 0 && player.action !== "attack") {
+    player.action = "walk";
+    player.frame += 0.2;
+  } else if (player.action !== "attack") {
+    player.action = "idle";
+    player.frame = 0;
+  }
+
+  if (player.action === "attack") {
+    player.frame += 0.25;
+    if (player.frame >= 4) {
+      player.action = "idle";
+      player.frame = 0;
+    }
+  }
+
+  // đánh boss
+  if (
+    player.action === "attack" &&
+    Math.abs(player.x - boss.x) < 60
+  ) {
+    boss.hp -= 1;
+  }
+}
+
+function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // NỀN
-  ctx.fillStyle = "#87ceeb";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // GROUND
-  for(let i=0;i<canvas.width;i+=32){
-    ctx.drawImage(groundImg,i,canvas.height-32,32,32);
+  // nền đất
+  for (let i = -1; i < 30; i++) {
+    ctx.drawImage(groundImg, i*64 - camX, canvas.height - 64, 64, 64);
   }
 
-  // ANIMATION
-  player.tick++;
-  if(player.tick > 10){
-    player.frame = (player.frame + 1) % 4;
-    player.tick = 0;
+  // boss
+  if (boss.hp > 0) {
+    ctx.drawImage(bossImg, boss.x - camX, boss.y, boss.w, boss.h);
+    ctx.fillStyle = "red";
+    ctx.fillRect(boss.x - camX, boss.y - 10, boss.hp, 5);
   }
 
-  // VẼ NHÂN VẬT (CẮT FRAME)
+  const img = playerImg[player.action];
+  const frame = Math.floor(player.frame) % 4;
   ctx.drawImage(
-    playerImg,
-    player.frame * 32, 0,   // ❗ QUAN TRỌNG
-    32, 32,
-    player.x, player.y,
+    img,
+    frame * 48, 0, 48, 48,
+    player.x - camX, player.y,
     48, 48
   );
-
-  requestAnimationFrame(gameLoop);
 }
-</script>
 
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// nút cảm ứng
+document.getElementById("left").ontouchstart = () => player.vx = -3;
+document.getElementById("right").ontouchstart = () => player.vx = 3;
+document.getElementById("attack").ontouchstart = () => {
+  player.action = "attack";
+  player.frame = 0;
+};
+
+document.body.ontouchend = () => player.vx = 0;
+</script>
 </body>
 </html>
