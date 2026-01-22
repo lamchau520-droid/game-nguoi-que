@@ -3,18 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <title>Game Người Que</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-html, body {
+body {
   margin: 0;
-  padding: 0;
+  background: #222;
   overflow: hidden;
-  background: black;
+  touch-action: none;
 }
+
 canvas {
   display: block;
+  width: 100vw;
+  height: 100vh;
   background: #6ec6ff;
 }
 
+/* nút điều khiển */
 .btn {
   position: fixed;
   bottom: 20px;
@@ -22,14 +28,17 @@ canvas {
   height: 60px;
   border-radius: 50%;
   background: #fff;
-  font-size: 20px;
+  font-size: 22px;
   border: none;
+  opacity: 0.85;
 }
+
 #left { left: 20px; }
 #right { left: 100px; }
 #attack { right: 20px; background: #ff7675; }
 </style>
 </head>
+
 <body>
 
 <canvas id="game"></canvas>
@@ -43,39 +52,41 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
 }
 resize();
 window.addEventListener("resize", resize);
 
-const load = src => {
-  const i = new Image();
-  i.src = src;
-  return i;
-};
+function load(src) {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
 
+/* ảnh */
 const playerImg = {
   idle: load("player_idle.png"),
   walk: load("player_walk.png"),
   attack: load("player_attack.png")
 };
 
-const bossImg = load("boss.png");
 const groundImg = load("ground.png");
+const bossImg = load("boss.png");
 
+/* player */
 const player = {
   x: 100,
   y: 0,
-  w: 48,
-  h: 48,
+  w: 64,
+  h: 64,
   vx: 0,
-  frame: 0,
   action: "idle"
 };
 
+/* boss */
 const boss = {
-  x: 900,
+  x: 700,
   y: 0,
   w: 64,
   h: 64,
@@ -83,73 +94,80 @@ const boss = {
 };
 
 let camX = 0;
-const GROUND_Y = () => canvas.height - 64;
+let isAttacking = false;
 
 function update() {
-  player.y = GROUND_Y() - player.h;
-  boss.y = GROUND_Y() - boss.h;
-
   player.x += player.vx;
 
-  camX = player.x - canvas.width / 2;
+  // camera theo player
+  camX = player.x - canvas.width / 2 + player.w / 2;
   if (camX < 0) camX = 0;
 
-  if (player.vx !== 0 && player.action !== "attack") {
+  // trạng thái
+  if (isAttacking) {
+    player.action = "attack";
+  } else if (player.vx !== 0) {
     player.action = "walk";
-    player.frame += 0.2;
-  } else if (player.action !== "attack") {
+  } else {
     player.action = "idle";
-    player.frame = 0;
   }
 
-  if (player.action === "attack") {
-    player.frame += 0.25;
-    if (player.frame >= 4) {
-      player.action = "idle";
-      player.frame = 0;
-    }
-  }
-
+  // đánh boss
   if (
-    player.action === "attack" &&
-    Math.abs(player.x - boss.x) < 60
+    isAttacking &&
+    Math.abs(player.x - boss.x) < 60 &&
+    boss.hp > 0
   ) {
-    boss.hp = Math.max(0, boss.hp - 1);
+    boss.hp -= 1;
   }
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // vẽ đất lặp vô hạn
-  const tileW = 64;
-  const start = Math.floor(camX / tileW) - 1;
-  const end = start + Math.ceil(canvas.width / tileW) + 2;
-
-  for (let i = start; i < end; i++) {
+  // mặt đất
+  const groundY = canvas.height - 64;
+  for (let i = -1; i < 50; i++) {
     ctx.drawImage(
       groundImg,
-      i * tileW - camX,
-      GROUND_Y(),
-      tileW,
-      tileW
+      i * 64 - camX,
+      groundY,
+      64,
+      64
     );
   }
 
+  // đặt nhân vật trên đất
+  player.y = groundY - player.h;
+  boss.y = groundY - boss.h;
+
+  // boss
   if (boss.hp > 0) {
-    ctx.drawImage(bossImg, boss.x - camX, boss.y, boss.w, boss.h);
+    ctx.drawImage(
+      bossImg,
+      boss.x - camX,
+      boss.y,
+      boss.w,
+      boss.h
+    );
+
+    // máu boss
     ctx.fillStyle = "red";
-    ctx.fillRect(boss.x - camX, boss.y - 10, boss.hp, 5);
+    ctx.fillRect(
+      boss.x - camX,
+      boss.y - 10,
+      boss.hp,
+      5
+    );
   }
 
-  const img = playerImg[player.action];
-  const frame = Math.floor(player.frame) % 4;
-
+  // player
   ctx.drawImage(
-    img,
-    frame * 48, 0, 48, 48,
-    player.x - camX, player.y,
-    48, 48
+    playerImg[player.action],
+    player.x - camX,
+    player.y,
+    player.w,
+    player.h
   );
 }
 
@@ -160,14 +178,19 @@ function loop() {
 }
 loop();
 
-// nút cảm ứng
+/* điều khiển cảm ứng */
 document.getElementById("left").ontouchstart = () => player.vx = -3;
 document.getElementById("right").ontouchstart = () => player.vx = 3;
+
 document.getElementById("attack").ontouchstart = () => {
-  player.action = "attack";
-  player.frame = 0;
+  isAttacking = true;
 };
-document.body.ontouchend = () => player.vx = 0;
+
+document.body.ontouchend = () => {
+  player.vx = 0;
+  isAttacking = false;
+};
 </script>
+
 </body>
 </html>
