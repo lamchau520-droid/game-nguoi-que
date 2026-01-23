@@ -5,179 +5,180 @@
 <title>Game Người Que</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    background: #6ec6ff;
-  }
-  canvas {
-    display: block;
-  }
-  .btn {
-    position: fixed;
-    bottom: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: none;
-    font-size: 24px;
-  }
-  #left { left: 20px; }
-  #right { left: 90px; }
-  #attack { right: 20px; background: red; color: white; }
+body{margin:0;overflow:hidden;background:#6ec6ff}
+canvas{display:block}
+.btn{
+ position:fixed;bottom:20px;width:60px;height:60px;
+ border-radius:50%;border:none;font-size:24px;opacity:.85
+}
+#left{left:20px}
+#right{left:90px}
+#attack{right:20px;background:red;color:#fff}
+#summon{right:90px;background:gold}
 </style>
 </head>
 
 <body>
-
-<canvas id="game"></canvas>
+<canvas id="c"></canvas>
 
 <button id="left" class="btn">◀</button>
 <button id="right" class="btn">▶</button>
-<button id="attack" class="btn">✖</button>
+<button id="attack" class="btn">⚔</button>
+<button id="summon" class="btn">＋</button>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const c=document.getElementById("c"),x=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+const load=s=>{let i=new Image();i.src=s;return i};
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// ===== LOAD ẢNH =====
-const groundImg = new Image();
-groundImg.src = "ground.png";
-
-const playerIdle = new Image();
-playerIdle.src = "player_idle.png";
-
-const playerWalk = new Image();
-playerWalk.src = "player_walk.png";
-
-const playerAttack = new Image();
-playerAttack.src = "player_attack.png";
-
-const bossImg = new Image();
-bossImg.src = "boss.png";
+const ground=load("ground.png"),
+idle=load("player_idle.png"),
+run1=load("player_run1.png"),
+run2=load("player_run2.png"),
+atk=load("player_attack.png"),
+bossImg=load("boss.png"),
+enemyImg=load("enemy.png"),
+allyImg=load("ally.png"),
+coinImg=load("coin.png");
 
 // ===== PLAYER =====
-const player = {
-  x: 200,
-  y: canvas.height - 140,
-  w: 48,
-  h: 64,
-  speed: 4,
-  dir: 1,
-  attacking: false,
-  moving: false
-};
+const player={x:200,y:c.height-140,w:48,h:64,hp:100,maxHp:100,dir:1,atk:false,moving:false,frame:0};
 
 // ===== BOSS =====
-const boss = {
-  x: 600,
-  y: canvas.height - 150,
-  w: 80,
-  h: 80,
-  hp: 100
-};
+const boss={x:1100,y:c.height-150,w:80,h:80,hp:200};
 
-let camX = 0;
+// ===== DATA =====
+let enemies=[],allies=[],coins=[],gold=0,camX=0;
+
+// ===== ENEMY SPAWN TIME =====
+let enemyTimer=0;
 
 // ===== INPUT =====
-let left = false;
-let right = false;
+let L=false,R=false;
+left.ontouchstart=()=>L=true;
+left.ontouchend=()=>L=false;
+right.ontouchstart=()=>R=true;
+right.ontouchend=()=>R=false;
 
-document.getElementById("left").ontouchstart = () => left = true;
-document.getElementById("left").ontouchend = () => left = false;
+attack.ontouchstart=()=>{
+ player.atk=true;
+ setTimeout(()=>player.atk=false,300);
+};
 
-document.getElementById("right").ontouchstart = () => right = true;
-document.getElementById("right").ontouchend = () => right = false;
-
-document.getElementById("attack").ontouchstart = () => {
-  player.attacking = true;
-  setTimeout(() => player.attacking = false, 300);
-  if (Math.abs(player.x - boss.x) < 80) {
-    boss.hp -= 10;
-  }
+summon.ontouchstart=()=>{
+ if(gold>=5){
+  gold-=5;
+  allies.push({x:player.x,y:player.y,hp:40});
+ }
 };
 
 // ===== UPDATE =====
-function update() {
-  player.moving = false;
+function update(){
+ player.moving=false;
+ if(L){player.x-=4;player.dir=-1;player.moving=true}
+ if(R){player.x+=4;player.dir=1;player.moving=true}
+ camX=Math.max(0,player.x-200);
 
-  if (left) {
-    player.x -= player.speed;
-    player.dir = -1;
-    player.moving = true;
-  }
-  if (right) {
-    player.x += player.speed;
-    player.dir = 1;
-    player.moving = true;
-  }
+ // ⏱️ spawn enemy mỗi 3 giây
+ enemyTimer++;
+ if(enemyTimer>180){
+  enemyTimer=0;
+  enemies.push({x:player.x+600,y:c.height-140,hp:40});
+ }
 
-  camX = player.x - 200;
-  if (camX < 0) camX = 0;
+ // boss AI
+ if(boss.hp>0){
+  boss.x+=boss.x>player.x?-1:1;
+
+  allies.forEach(a=>{
+   if(Math.abs(a.x-boss.x)<50 && Math.random()<0.03){
+    a.hp-=1;
+   }
+  });
+
+  if(Math.abs(boss.x-player.x)<60 && Math.random()<0.02){
+   player.hp-=4;
+  }
+ }
+
+ // enemies
+ enemies.forEach(e=>{
+  e.x+=e.x>player.x?-0.8:0.8;
+  if(player.atk && Math.abs(e.x-player.x)<50){
+   e.hp-=10;
+  }
+ });
+
+ // enemy chết → rơi coin
+ enemies=enemies.filter(e=>{
+  if(e.hp<=0){
+   coins.push({x:e.x,y:e.y});
+   return false;
+  }
+  return true;
+ });
+
+ // coins
+ coins=coins.filter(c=>{
+  if(Math.abs(c.x-player.x)<40){gold++;return false}
+  return true;
+ });
+
+ // allies
+ allies.forEach(a=>{
+  a.x+=a.x<boss.x?1:-1;
+  if(Math.abs(a.x-boss.x)<50) boss.hp-=0.15;
+ });
+
+ allies=allies.filter(a=>a.hp>0);
+
+ // player đánh boss
+ if(player.atk && Math.abs(player.x-boss.x)<70) boss.hp-=5;
+
+ player.frame++;
 }
 
 // ===== DRAW =====
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(){
+ x.clearRect(0,0,c.width,c.height);
 
-  // NỀN TRỜI
-  ctx.fillStyle = "#6ec6ff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+ for(let i=0;i<70;i++)
+  x.drawImage(ground,i*64-camX%64,c.height-64,64,64);
 
-  // GROUND LẶP
-  for (let i = -1; i < 50; i++) {
-    ctx.drawImage(
-      groundImg,
-      i * 64 - camX % 64,
-      canvas.height - 64,
-      64,
-      64
-    );
-  }
+ coins.forEach(o=>x.drawImage(coinImg,o.x-camX,o.y,32,32));
+ enemies.forEach(e=>x.drawImage(enemyImg,e.x-camX,e.y,48,48));
+ allies.forEach(a=>x.drawImage(allyImg,a.x-camX,a.y,48,48));
 
-  // PLAYER
-  let img = playerIdle;
-  if (player.attacking) img = playerAttack;
-  else if (player.moving) img = playerWalk;
+ if(boss.hp>0){
+  x.drawImage(bossImg,boss.x-camX,boss.y,boss.w,boss.h);
+  x.fillStyle="red";
+  x.fillRect(boss.x-camX,boss.y-8,boss.w*(boss.hp/200),5);
+ }
 
-  ctx.save();
-  ctx.translate(player.x - camX + player.w / 2, player.y);
-  ctx.scale(player.dir, 1);
-  ctx.drawImage(img, -player.w / 2, 0, player.w, player.h);
-  ctx.restore();
+ let img=idle;
+ if(player.atk) img=atk;
+ else if(player.moving) img=player.frame%20<10?run1:run2;
 
-  // ===== BOSS (CHỈ VẼ 1 LẦN) =====
-  if (boss.hp > 0) {
-    ctx.drawImage(
-      bossImg,
-      boss.x - camX,
-      boss.y,
-      boss.w,
-      boss.h
-    );
+ x.save();
+ x.translate(player.x-camX+player.w/2,player.y);
+ x.scale(player.dir,1);
+ x.drawImage(img,-player.w/2,0,player.w,player.h);
+ x.restore();
 
-    // MÁU BOSS
-    ctx.fillStyle = "red";
-    ctx.fillRect(
-      boss.x - camX,
-      boss.y - 10,
-      boss.w * (boss.hp / 100),
-      6
-    );
-  }
+ // UI
+ x.fillStyle="red";
+ x.fillRect(20,20,150*(player.hp/player.maxHp),10);
+ x.fillStyle="black";
+ x.fillText("HP",20,18);
+ x.fillText("Gold: "+gold,20,50);
 }
 
-// ===== LOOP (CHỈ 1 LẦN) =====
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
+// ===== LOOP =====
+function loop(){
+ update();draw();
+ requestAnimationFrame(loop);
 }
 loop();
 </script>
-
 </body>
 </html>
