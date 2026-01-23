@@ -8,13 +8,14 @@
 body{margin:0;overflow:hidden;background:#6ec6ff}
 canvas{display:block}
 .btn{
- position:fixed;bottom:20px;width:60px;height:60px;
- border-radius:50%;border:none;font-size:24px;opacity:.85
+ position:fixed;bottom:20px;
+ width:60px;height:60px;
+ border-radius:50%;
+ border:none;font-size:24px
 }
 #left{left:20px}
 #right{left:90px}
 #attack{right:20px;background:red;color:#fff}
-#summon{right:90px;background:gold}
 </style>
 </head>
 
@@ -24,158 +25,150 @@ canvas{display:block}
 <button id="left" class="btn">◀</button>
 <button id="right" class="btn">▶</button>
 <button id="attack" class="btn">⚔</button>
-<button id="summon" class="btn">＋</button>
 
 <script>
-const c=document.getElementById("c"),x=c.getContext("2d");
-c.width=innerWidth;c.height=innerHeight;
-const load=s=>{let i=new Image();i.src=s;return i};
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth;
+canvas.height=innerHeight;
 
-const ground=load("ground.png"),
-idle=load("player_idle.png"),
-run1=load("player_run1.png"),
-run2=load("player_run2.png"),
-atk=load("player_attack.png"),
-bossImg=load("boss.png"),
-enemyImg=load("enemy.png"),
-allyImg=load("ally.png"),
-coinImg=load("coin.png");
+const img=s=>{let i=new Image();i.src=s;return i}
+const ground=img("ground.png");
+const pIdle=img("player_idle.png");
+const pWalk=img("player_walk.png");
+const pAtk=img("player_attack.png");
+const enemyImg=img("enemy.png");
+const bossImg=img("boss.png");
 
-// ===== PLAYER =====
-const player={x:200,y:c.height-140,w:48,h:64,hp:100,maxHp:100,dir:1,atk:false,moving:false,frame:0};
+/* ===== PLAYER ===== */
+const player={
+ x:200,y:canvas.height-140,
+ w:48,h:64,
+ hp:100,maxHp:100,
+ dir:1,atk:false,moving:false
+};
 
-// ===== BOSS =====
-const boss={x:1100,y:c.height-150,w:80,h:80,hp:200};
+/* ===== ENEMY ===== */
+let enemies=[];
+for(let i=0;i<6;i++){
+ enemies.push({x:500+i*350,y:canvas.height-140,hp:30});
+}
 
-// ===== DATA =====
-let enemies=[],allies=[],coins=[],gold=0,camX=0;
+/* ===== BOSS ===== */
+const boss={
+ x:2600,y:canvas.height-160,
+ w:80,h:80,
+ hp:150
+};
 
-// ===== ENEMY SPAWN TIME =====
-let enemyTimer=0;
+let camX=0;
+let gameOver=false;
 
-// ===== INPUT =====
+/* ===== INPUT ===== */
 let L=false,R=false;
 left.ontouchstart=()=>L=true;
 left.ontouchend=()=>L=false;
 right.ontouchstart=()=>R=true;
 right.ontouchend=()=>R=false;
-
 attack.ontouchstart=()=>{
- player.atk=true;
- setTimeout(()=>player.atk=false,300);
-};
-
-summon.ontouchstart=()=>{
- if(gold>=5){
-  gold-=5;
-  allies.push({x:player.x,y:player.y,hp:40});
+ if(!gameOver){
+  player.atk=true;
+  setTimeout(()=>player.atk=false,300);
  }
 };
 
-// ===== UPDATE =====
+/* ===== UPDATE ===== */
 function update(){
+ if(gameOver) return;
+
  player.moving=false;
  if(L){player.x-=4;player.dir=-1;player.moving=true}
  if(R){player.x+=4;player.dir=1;player.moving=true}
- camX=Math.max(0,player.x-200);
 
- // ⏱️ spawn enemy mỗi 3 giây
- enemyTimer++;
- if(enemyTimer>180){
-  enemyTimer=0;
-  enemies.push({x:player.x+600,y:c.height-140,hp:40});
- }
+ camX=player.x-200;
+ if(camX<0) camX=0;
 
- // boss AI
- if(boss.hp>0){
-  boss.x+=boss.x>player.x?-1:1;
-
-  allies.forEach(a=>{
-   if(Math.abs(a.x-boss.x)<50 && Math.random()<0.03){
-    a.hp-=1;
-   }
-  });
-
-  if(Math.abs(boss.x-player.x)<60 && Math.random()<0.02){
-   player.hp-=4;
-  }
- }
-
- // enemies
+ /* Enemy AI */
  enemies.forEach(e=>{
-  e.x+=e.x>player.x?-0.8:0.8;
+  e.x+=e.x>player.x?-0.6:0.6;
+
+  if(Math.abs(e.x-player.x)<40){
+   player.hp-=0.3;
+  }
   if(player.atk && Math.abs(e.x-player.x)<50){
    e.hp-=10;
   }
  });
 
- // enemy chết → rơi coin
- enemies=enemies.filter(e=>{
-  if(e.hp<=0){
-   coins.push({x:e.x,y:e.y});
-   return false;
-  }
-  return true;
- });
+ enemies=enemies.filter(e=>e.hp>0);
 
- // coins
- coins=coins.filter(c=>{
-  if(Math.abs(c.x-player.x)<40){gold++;return false}
-  return true;
- });
-
- // allies
- allies.forEach(a=>{
-  a.x+=a.x<boss.x?1:-1;
-  if(Math.abs(a.x-boss.x)<50) boss.hp-=0.15;
- });
-
- allies=allies.filter(a=>a.hp>0);
-
- // player đánh boss
- if(player.atk && Math.abs(player.x-boss.x)<70) boss.hp-=5;
-
- player.frame++;
-}
-
-// ===== DRAW =====
-function draw(){
- x.clearRect(0,0,c.width,c.height);
-
- for(let i=0;i<70;i++)
-  x.drawImage(ground,i*64-camX%64,c.height-64,64,64);
-
- coins.forEach(o=>x.drawImage(coinImg,o.x-camX,o.y,32,32));
- enemies.forEach(e=>x.drawImage(enemyImg,e.x-camX,e.y,48,48));
- allies.forEach(a=>x.drawImage(allyImg,a.x-camX,a.y,48,48));
-
+ /* Boss AI */
  if(boss.hp>0){
-  x.drawImage(bossImg,boss.x-camX,boss.y,boss.w,boss.h);
-  x.fillStyle="red";
-  x.fillRect(boss.x-camX,boss.y-8,boss.w*(boss.hp/200),5);
+  boss.x+=boss.x>player.x?-0.8:0.8;
+  if(Math.abs(boss.x-player.x)<60){
+   player.hp-=0.6;
+  }
+  if(player.atk && Math.abs(boss.x-player.x)<70){
+   boss.hp-=5;
+  }
  }
 
- let img=idle;
- if(player.atk) img=atk;
- else if(player.moving) img=player.frame%20<10?run1:run2;
-
- x.save();
- x.translate(player.x-camX+player.w/2,player.y);
- x.scale(player.dir,1);
- x.drawImage(img,-player.w/2,0,player.w,player.h);
- x.restore();
-
- // UI
- x.fillStyle="red";
- x.fillRect(20,20,150*(player.hp/player.maxHp),10);
- x.fillStyle="black";
- x.fillText("HP",20,18);
- x.fillText("Gold: "+gold,20,50);
+ if(player.hp<=0){
+  player.hp=0;
+  gameOver=true;
+ }
 }
 
-// ===== LOOP =====
+/* ===== DRAW ===== */
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ /* Ground */
+ for(let i=0;i<60;i++)
+  ctx.drawImage(ground,i*64-camX%64,canvas.height-64,64,64);
+
+ /* Enemies */
+ enemies.forEach(e=>{
+  ctx.drawImage(enemyImg,e.x-camX,e.y,48,48);
+ });
+
+ /* Boss */
+ if(boss.hp>0){
+  ctx.drawImage(bossImg,boss.x-camX,boss.y,boss.w,boss.h);
+  ctx.fillStyle="red";
+  ctx.fillRect(boss.x-camX,boss.y-8,boss.w*(boss.hp/150),5);
+ }
+
+ /* Player */
+ let pImg=pIdle;
+ if(player.atk)pImg=pAtk;
+ else if(player.moving)pImg=pWalk;
+
+ ctx.save();
+ ctx.translate(player.x-camX+player.w/2,player.y);
+ ctx.scale(player.dir,1);
+ ctx.drawImage(pImg,-player.w/2,0,player.w,player.h);
+ ctx.restore();
+
+ /* UI */
+ ctx.fillStyle="red";
+ ctx.fillRect(20,20,200*(player.hp/player.maxHp),12);
+ ctx.strokeRect(20,20,200,12);
+ ctx.fillStyle="#000";
+ ctx.fillText("HP",20,16);
+
+ if(gameOver){
+  ctx.fillStyle="rgba(0,0,0,0.6)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#fff";
+  ctx.font="40px Arial";
+  ctx.fillText("GAME OVER",canvas.width/2-120,canvas.height/2);
+ }
+}
+
 function loop(){
- update();draw();
+ update();
+ draw();
  requestAnimationFrame(loop);
 }
 loop();
